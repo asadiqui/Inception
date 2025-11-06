@@ -60,15 +60,14 @@ Persistent volumes map to host directories:
 
 ## Prerequisites
 
-- Linux host (tested on Alpine-based containers; repo developed on Linux)
-- Docker Engine and Docker Compose plugin
+- Docker Engine and Docker Compose (Docker Desktop for Windows/MacOS)
 - make
 
 ---
 
 ## Quick start
 
-1) Create a `.env` file at `srcs/.env` with your settings (template below).
+1) Create a `.env` file at `srcs/.env` with your settings (or use mine)
 
 2) Launch the stack:
 
