@@ -5,6 +5,7 @@ cd /var/www/html
 # Configure PHP-FPM on the first run
 if [ ! -e /etc/.firstrun ]; then
     sed -i 's/listen = 127.0.0.1:9000/listen = 9000/g' /etc/php82/php-fpm.d/www.conf
+    sed -i 's/memory_limit = 128M/memory_limit = 512M/g' /etc/php82/php.ini
     touch /etc/.firstrun
 fi
 

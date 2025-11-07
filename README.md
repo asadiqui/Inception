@@ -82,7 +82,7 @@ This builds (if needed), creates data directories, and starts all services detac
 - WordPress: https://YOUR_DOMAIN_NAME (port 443; self-signed cert, accept the warning)
 - Adminer:   http://localhost:8080
 - Static:    http://localhost:80
-- Portainer: https://localhost:9443 (or http://localhost:9000)
+- Portainer: https://localhost:9000
 - FTP:       ftp://localhost:21 (passive ports 21000–21010)
 
 Tip: If you use a custom domain (e.g., `example.localhost`), map it in `/etc/hosts`:

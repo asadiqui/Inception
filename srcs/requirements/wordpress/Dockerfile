@@ -8,7 +8,8 @@ RUN apk update && apk add bash curl mariadb-client icu-data-full ghostscript \
         php82-xmlreader php82-zlib php82-tokenizer
 RUN cd /usr/local/bin && \
     curl -o wp -L https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && \
-    chmod +x wp
+    chmod +x wp && \
+    ln -s /usr/bin/php82 /usr/bin/php
 COPY tools/wordpress-entrypoint.sh /usr/local/bin/
 
 RUN chmod +x /usr/local/bin/wordpress-entrypoint.sh

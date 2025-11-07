@@ -1,8 +1,7 @@
 #!/bin/bash
 set -e
 
-# On the first container run, configure the server to be reachable by other
-# containers
+# Configure the server to be reachable by other containers
 if [ ! -e /etc/.firstrun ]; then
     cat << EOF >> /etc/my.cnf.d/mariadb-server.cnf
 [mysqld]
@@ -12,28 +11,46 @@ EOF
     touch /etc/.firstrun
 fi
 
-# On the first volume mount, create a database in it
-if [ ! -e /var/lib/mysql/.firstmount ]; then
-    # Initialize a database on the volume and start MariaDB in the background
-    mysql_install_db --datadir=/var/lib/mysql --skip-test-db --user=mysql --group=mysql \
-        --auth-root-authentication-method=socket >/dev/null 2>/dev/null
-    mysqld_safe &
-    mysqld_pid=$!
-
-    # Wait for the server to be started, then set up database and accounts
-    mysqladmin ping -u root --silent --wait >/dev/null 2>/dev/null
-    cat << EOF | mysql --protocol=socket -u root -p=
-CREATE DATABASE $MYSQL_DATABASE;
-CREATE USER '$MYSQL_USER'@'%' IDENTIFIED BY '$MYSQL_PASSWORD';
-GRANT ALL PRIVILEGES ON $MYSQL_DATABASE.* TO '$MYSQL_USER'@'%';
-GRANT ALL PRIVILEGES on *.* to 'root'@'%' IDENTIFIED BY '$MYSQL_ROOT_PASSWORD';
-FLUSH PRIVILEGES;
+# Initialize database if not exists
+if [ ! -d "/var/lib/mysql/mysql" ]; then
+    echo "Initializing MariaDB database..."
+    mysql_install_db --user=mysql --datadir=/var/lib/mysql --rpm >/dev/null 2>&1
+    
+    echo "Starting temporary MariaDB server for setup..."
+    mysqld_safe --user=mysql --datadir=/var/lib/mysql --skip-networking &
+    pid="$!"
+    
+    # Wait for MariaDB to start
+    for i in {30..0}; do
+        if echo 'SELECT 1' | mysql &> /dev/null; then
+            break
+        fi
+        sleep 1
+    done
+    
+    if [ "$i" = 0 ]; then
+        echo >&2 'MariaDB init process failed.'
+        exit 1
+    fi
+    
+    echo "Setting up database and users..."
+    mysql << EOF
+DELETE FROM mysql.user WHERE user NOT IN ('mysql.sys', 'mysqlxsys', 'root') OR host NOT IN ('localhost') ;
+SET PASSWORD FOR 'root'@'localhost'=PASSWORD('${MYSQL_ROOT_PASSWORD}') ;
+GRANT ALL ON *.* TO 'root'@'%' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}' ;
+CREATE DATABASE IF NOT EXISTS \`${MYSQL_DATABASE}\` ;
+CREATE USER '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}' ;
+GRANT ALL ON \`${MYSQL_DATABASE}\`.* TO '${MYSQL_USER}'@'%' ;
+FLUSH PRIVILEGES ;
 EOF
-
-    # Shut down the temporary server and mark the volume as initialized
-    mysqladmin shutdown
-    touch /var/lib/mysql/.firstmount
+    
+    if ! kill -s TERM "$pid" || ! wait "$pid"; then
+        echo >&2 'MariaDB init process failed.'
+        exit 1
+    fi
+    
+    echo "MariaDB initialization complete."
 fi
 
-exec mysqld_safe
-
+echo "Starting MariaDB server..."
+exec mysqld_safe --user=mysql --datadir=/var/lib/mysql

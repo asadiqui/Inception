@@ -26,14 +26,17 @@ services:
       - .env
     build: requirements/nginx
     ports:
+      - "80:80"   #http (redirects to https)
       - "443:443" #https
     volumes:
-      - wordpress:/var/www/html 
+      - wordpress:/var/www/html
+      - static-site:/usr/share/nginx/html
     networks:
       - docker-network
     depends_on:
       - wordpress
       - mariadb
+      - static-site
     image: nginx
   wordpress:
     container_name: wordpress
@@ -104,15 +107,15 @@ services:
     container_name: static-site
     build: ./requirements/bonus/static-site
     restart: always
-    ports:
-      - "80:80"
+    volumes:
+      - static-site:/usr/share/nginx/html
+    networks:
+      - docker-network
     image: static-site
   portainer:
     build: ./requirements/bonus/portainer
     container_name: portainer
     ports:
-      - "8000:8000"
-      - "9443:9443"
       - "9000:9000"
     networks:
       - docker-network
@@ -140,6 +143,12 @@ volumes:
       o: bind
       type: none
       device: ${HOME}/data/portainer
+  static-site:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${HOME}/data/static-site
 
 networks:
   docker-network:

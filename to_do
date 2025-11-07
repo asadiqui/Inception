@@ -1,0 +1,9 @@
+- acces wordpress ??
+- access the porfolio via https ?
+- access via /slash and port
+- for portainer: "Your Portainer instance timed out for security purposes. To re-enable your Portainer instance, you will need to restart Portainer."
+- how to access ftp ?
+- dockerfile for mariadb i have "COPY tools/mariadb-entrypoint.sh /usr/local/bin/", accessing the path is empty
+- "ENTRYPOINT [ "mariadb-entrypoint.sh" ]" in a dockerfile, does that mean that the engine/daeom executes the script ?
+- about the ".firstrun" file in mariaddb script
+- nginx: mkdir -p /etc/nginx/ssl

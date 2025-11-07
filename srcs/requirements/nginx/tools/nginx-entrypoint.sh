@@ -14,6 +14,13 @@ if [ ! -e /etc/.firstrun ]; then
     # to the WordPress container's php-fpm process
     cat << EOF >> /etc/nginx/http.d/default.conf
 server {
+    listen 80;
+    listen [::]:80;
+    server_name $DOMAIN_NAME;
+    return 301 https://\$server_name\$request_uri;
+}
+
+server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
     server_name $DOMAIN_NAME;
@@ -23,11 +30,47 @@ server {
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
 
+    # Portfolio/Static site location
+    location /portfolio {
+        alias /usr/share/nginx/html;
+        try_files \$uri \$uri/ /portfolio/index.html;
+        
+        location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg)$ {
+            expires 7d;
+            add_header Cache-Control "public";
+        }
+    }
+    
+    # Portainer proxy
+    location /portainer/ {
+        proxy_pass http://portainer:9000/;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_redirect off;
+    }
+    
+    # Adminer proxy  
+    location /adminer/ {
+        proxy_pass http://adminer:8080/;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_redirect off;
+    }
+
+    # WordPress (default location)
     root /var/www/html;
     index index.php index.html index.htm;
 
     location / {
-        try_files \$uri \$uri/ /index.php?\$args;
+        try_files \$uri \$uri/ @wordpress;
+    }
+    
+    location @wordpress {
+        rewrite ^.*$ /index.php last;
     }
 
     location ~ [^/]\.php(/|\$) {

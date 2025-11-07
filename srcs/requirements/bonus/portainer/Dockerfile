@@ -12,7 +12,7 @@ RUN curl -L https://github.com/portainer/portainer/releases/download/2.19.4/port
 
 # CMD ["sleep", "infinity"]
 # Expose the Portainer port (default is 9000)
-EXPOSE 9443 8000 9000
+EXPOSE 9000
 
 # Set the entry point to start Portainer
 ENTRYPOINT ["./portainer/portainer"]
