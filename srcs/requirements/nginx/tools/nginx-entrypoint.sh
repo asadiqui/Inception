@@ -65,12 +65,20 @@ server {
     root /var/www/html;
     index index.php index.html index.htm;
 
-    location / {
-        try_files \$uri \$uri/ @wordpress;
+    # Handle static file extensions with proper 404
+    location ~* \.(txt|pdf|zip|doc|docx|xml|json)$ {
+        try_files \$uri =404;
     }
-    
-    location @wordpress {
-        rewrite ^.*$ /index.php last;
+
+    # WordPress assets and uploads
+    location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        try_files \$uri =404;
+        expires 7d;
+        add_header Cache-Control "public";
+    }
+
+    location / {
+        try_files \$uri \$uri/ /index.php?\$args;
     }
 
     location ~ [^/]\.php(/|\$) {
