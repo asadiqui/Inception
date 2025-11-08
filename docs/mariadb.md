@@ -157,9 +157,11 @@ if [ ! -d "/var/lib/mysql/mysql" ]; then
 ```
 **Explanation**:
 - Starts MariaDB in background for initial setup
-- **mysqld_safe**: Wrapper script that monitors mysqld process
+- **mysqld_safe**: Wrapper script that monitors mysqld process (Alpine Linux naming)
 - **--skip-networking**: Only local connections during setup
 - **&**: Run in background, store PID for later
+
+> **Note**: Alpine Linux MariaDB package uses `mysqld_safe` instead of `mariadbd-safe`
 
 ```bash
     # Wait for MariaDB to start
@@ -223,7 +225,7 @@ exec mysqld_safe --user=mysql --datadir=/var/lib/mysql
 **Explanation**:
 - Starts MariaDB as main container process
 - **exec**: Replaces script process with MariaDB (proper PID 1)
-- **mysqld_safe**: Production-ready wrapper with monitoring
+- **mysqld_safe**: Production-ready wrapper with monitoring (Alpine Linux naming)
 
 ## Configuration Analysis
 

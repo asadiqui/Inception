@@ -11,6 +11,7 @@ services:
     env_file:
       - .env
     build: requirements/mariadb
+    pull_policy: build
     volumes:
       - mariadb:/var/lib/mysql
     networks:
@@ -25,6 +26,7 @@ services:
     env_file:
       - .env
     build: requirements/nginx
+    pull_policy: build
     ports:
       - "80:80"   #http (redirects to https)
       - "443:443" #https
@@ -57,6 +59,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
     build: requirements/wordpress
+    pull_policy: build
     volumes:
       - wordpress:/var/www/html
     networks:
@@ -67,6 +70,7 @@ services:
     image: wordpress
   redis:
     build: ./requirements/bonus/redis
+    pull_policy: build
     container_name: redis
     restart: always
     networks:
@@ -74,6 +78,7 @@ services:
     image: redis
   ftp:
     build: ./requirements/bonus/ftp
+    pull_policy: build
     container_name: ftp
     restart: always
     env_file:
@@ -94,6 +99,7 @@ services:
     image: ftp
   adminer:
     build: ./requirements/bonus/adminer
+    pull_policy: build
     container_name: adminer
     restart: always
     depends_on:
@@ -106,6 +112,7 @@ services:
   static-site:
     container_name: static-site
     build: ./requirements/bonus/static-site
+    pull_policy: build
     restart: always
     volumes:
       - static-site:/usr/share/nginx/html
@@ -114,6 +121,7 @@ services:
     image: static-site
   portainer:
     build: ./requirements/bonus/portainer
+    pull_policy: build
     container_name: portainer
     ports:
       - "9000:9000"

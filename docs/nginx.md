@@ -130,8 +130,17 @@ set -e
 ```bash
 # On the first container run, generate a certificate and configure the server
 if [ ! -e /etc/.firstrun ]; then
+    # Ensure destinations exist so file writes won't fail inside the container
+    mkdir -p /etc/nginx/conf.d
+    mkdir -p /etc/nginx/http.d
+    mkdir -p /etc/nginx/ssl
 ```
-**Explanation**: Checks if this is the first run by looking for a marker file. This prevents reconfiguration on container restarts.
+**Explanation**: 
+- Checks if this is the first run by looking for a marker file
+- Creates necessary directories before writing configuration files:
+  - `/etc/nginx/conf.d`: Standard nginx config directory (used by official nginx image)
+  - `/etc/nginx/http.d`: Alpine nginx's config directory (included inside `http{}` block)
+  - `/etc/nginx/ssl`: Directory for SSL certificates
 
 ```bash
     # Generate a certificate for HTTPS

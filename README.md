@@ -207,8 +207,11 @@ make_dir_up:
 # Start services with rebuild
 make_dir_up_build:
 	@printf "Building configuration ${name}...\n"
-	@docker compose -f $(DOCKER_COMPOSE_FILE) --env-file $(ENV_FILE) up -d --build
+	@docker compose -f $(DOCKER_COMPOSE_FILE) --env-file $(ENV_FILE) build --pull never
+	@docker compose -f $(DOCKER_COMPOSE_FILE) --env-file $(ENV_FILE) up -d
 ```
+
+**Note:** The `--pull never` flag ensures Docker always builds from local Dockerfiles instead of pulling images from Docker Hub, even when image names match official repositories (nginx, mariadb, wordpress, etc.).
 
 **Makefile Benefits:**
 - **Automation**: Single command setup and teardown

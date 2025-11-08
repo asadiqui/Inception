@@ -3,6 +3,11 @@ set -e
 
 # On the first container run, generate a certificate and configure the server
 if [ ! -e /etc/.firstrun ]; then
+    # Ensure destinations exist so file writes won't fail inside the container
+    mkdir -p /etc/nginx/conf.d
+    mkdir -p /etc/nginx/http.d
+    mkdir -p /etc/nginx/ssl
+
     # Generate a certificate for HTTPS
     openssl req -x509 -days 365 -newkey rsa:2048 -nodes \
         -out '/etc/nginx/ssl/cert.crt' \
@@ -12,6 +17,8 @@ if [ ! -e /etc/.firstrun ]; then
 
     # Configure nginx to serve static WordPress files and to pass PHP requests
     # to the WordPress container's php-fpm process
+    # Write into /etc/nginx/conf.d/default.conf (the standard location used by
+    # the official nginx image) so the generated TLS server block is loaded.
     cat << EOF >> /etc/nginx/http.d/default.conf
 server {
     listen 80;
