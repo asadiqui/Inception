@@ -69,7 +69,7 @@ Internet → NGINX (Port 443) → Internal Services
     ↓
     ├── / → WordPress (PHP-FPM)
     ├── /portfolio/ → Static Site Files
-    ├── /portainer/ → Portainer (Port 9000)
+    ├── /cadvisor/ → cAdvisor (Port 8080)
     └── /adminer/ → Adminer (Port 8080)
 ```
 
@@ -162,28 +162,15 @@ if [ ! -e /etc/.firstrun ]; then
 ```bash
     cat << EOF >> /etc/nginx/http.d/default.conf
 server {
-    listen 80;
-    listen [::]:80;
-    server_name $DOMAIN_NAME;
-    return 301 https://\$server_name\$request_uri;
-}
-```
-**Explanation**:
-- Creates HTTP server block that listens on port 80
-- `listen [::]:80`: IPv6 support
-- `return 301`: Permanent redirect to HTTPS
-- `\$server_name\$request_uri`: Preserves original URL in redirect
-
-```bash
-server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
     server_name $DOMAIN_NAME;
 ```
 **Explanation**:
-- HTTPS server block on port 443
+- HTTPS server block on port 443 (sole entry point - no HTTP port 80)
 - `ssl`: Enables SSL/TLS
 - `http2`: Enables HTTP/2 protocol for better performance
+- **Note**: Port 80 is not exposed per project requirements (443 as sole entry point)
 
 ```bash
     ssl_certificate /etc/nginx/ssl/cert.crt;
@@ -214,20 +201,33 @@ server {
 - Nested location for static assets with 7-day caching
 
 ```bash
-    # Portainer proxy
-    location /portainer/ {
-        proxy_pass http://portainer:9000/;
+    # cAdvisor proxy
+    location ^~ /cadvisor/ {
+        rewrite ^/cadvisor/(.*)\$ /\$1 break;
+        proxy_pass http://cadvisor:8080;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_redirect off;
+        
+        # Handle websockets for real-time updates
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        
+        # Rewrite Location headers in redirects
+        proxy_redirect ~^/(.*)\$ /cadvisor/\$1;
     }
 ```
 **Explanation**:
-- Proxies /portainer/ requests to portainer container port 9000
+- **`location ^~ /cadvisor/`**: Priority prefix modifier (`^~`) ensures this matches BEFORE regex locations (like CSS/JS file patterns)
+- **`rewrite ^/cadvisor/(.*)\$ /\$1 break`**: Strips `/cadvisor/` prefix before proxying (e.g., `/cadvisor/static/file.css` → `/static/file.css`)
+- Proxies to cAdvisor container port 8080
 - Preserves original client information in headers
-- `proxy_redirect off`: Prevents automatic redirect rewriting
+- **Websocket support**: Enables real-time monitoring updates
+- **`proxy_redirect ~^/(.*)\$ /cadvisor/\$1`**: Rewrites redirect Location headers to include `/cadvisor/` prefix
+
+> **Why `^~` is needed**: Without it, nginx regex locations (like `location ~* \.(css|js|...)$`) would match before our prefix location, causing static files to be looked for in WordPress directory instead of being proxied to cAdvisor.
 
 ```bash
     # WordPress (default location)
@@ -353,7 +353,7 @@ curl -k -I https://asadiqui.42.fr/portfolio/
 curl -k -I https://asadiqui.42.fr/adminer/
 
 # Check proxy headers
-curl -k -H "Host: test.com" https://asadiqui.42.fr/portainer/
+curl -k -H "Host: test.com" https://asadiqui.42.fr/cadvisor/
 ```
 
 ### Performance Testing
@@ -401,7 +401,7 @@ docker exec nginx ls -la /etc/nginx/conf.d/
 - [📝 **WordPress**](wordpress.md) - PHP-FPM backend service
 - [🎨 **Portfolio**](portfolio.md) - Static site served by NGINX
 - [⚙️ **Adminer**](adminer.md) - Proxied database interface
-- [🐳 **Portainer**](portainer.md) - Proxied container management
+- [� **cAdvisor**](cadvisor.md) - Proxied container monitoring
 
 ---
 

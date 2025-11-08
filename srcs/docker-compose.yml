@@ -28,7 +28,6 @@ services:
     build: requirements/nginx
     pull_policy: build
     ports:
-      - "80:80"   # HTTP - not an entry point, just a redirect to https
       - "443:443" # HTTPS - sole secure entry point
     volumes:
       - wordpress:/var/www/html
@@ -119,19 +118,23 @@ services:
     networks:
       - docker-network
     image: static-site
-  portainer:
-    build: ./requirements/bonus/portainer
+  cadvisor:
+    build: ./requirements/bonus/cadvisor
     pull_policy: build
-    container_name: portainer
+    container_name: cadvisor
     ports:
-      - "9000:9000"
+      - "8081:8080"
     networks:
       - docker-network
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - portainer:/data
-    image: portainer
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    image: cadvisor
     restart: always
+    privileged: true
 
 volumes:
   mariadb:
@@ -146,11 +149,6 @@ volumes:
       type: none
       o: bind
       device: ${HOME}/data/wordpress
-  portainer:
-    driver_opts:
-      o: bind
-      type: none
-      device: ${HOME}/data/portainer
   static-site:
     driver: local
     driver_opts:

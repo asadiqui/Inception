@@ -17,16 +17,7 @@ if [ ! -e /etc/.firstrun ]; then
 
     # Configure nginx to serve static WordPress files and to pass PHP requests
     # to the WordPress container's php-fpm process
-    # Write into /etc/nginx/conf.d/default.conf (the standard location used by
-    # the official nginx image) so the generated TLS server block is loaded.
     cat << EOF >> /etc/nginx/http.d/default.conf
-server {
-    listen 80;
-    listen [::]:80;
-    server_name $DOMAIN_NAME;
-    return 301 https://\$server_name\$request_uri;
-}
-
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
@@ -48,14 +39,22 @@ server {
         }
     }
     
-    # Portainer proxy
-    location /portainer/ {
-        proxy_pass http://portainer:9000/;
+    # cAdvisor proxy - main path (priority prefix to override regex locations)
+    location ^~ /cadvisor/ {
+        rewrite ^/cadvisor/(.*)\$ /\$1 break;
+        proxy_pass http://cadvisor:8080;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_redirect off;
+        
+        # Handle websockets for real-time updates
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        
+        # Rewrite Location headers in redirects
+        proxy_redirect ~^/(.*)\$ /cadvisor/\$1;
     }
     
     # Adminer proxy  

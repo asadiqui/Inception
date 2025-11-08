@@ -32,7 +32,7 @@ The Inception project is a comprehensive system administration exercise that dem
 ┌─────────────────────────────────────────────────────────────┐
 │                        Internet                              │
 └─────────────────────┬───────────────────────────────────────┘
-                      │ HTTPS (443) / HTTP (80→443)
+                      │ HTTPS (443) - Sole Entry Point
                       │
             ┌─────────▼─────────┐
             │     NGINX         │ ← SSL Termination & Reverse Proxy
@@ -42,8 +42,8 @@ The Inception project is a comprehensive system administration exercise that dem
               ┌───────┼───────┬───────────────┬─────────────┐
               │       │       │               │             │
         ┌─────▼──┐ ┌─▼───┐ ┌─▼────────┐ ┌───▼──────┐ ┌────▼─────┐
-        │WordPress│ │Redis│ │ MariaDB  │ │Static-Site│ │Portainer │
-        │php-fpm  │ │Cache│ │ Database │ │Portfolio  │ │ Mgmt UI  │
+        │WordPress│ │Redis│ │ MariaDB  │ │Static-Site│ │ cAdvisor │
+        │php-fpm  │ │Cache│ │ Database │ │Portfolio  │ │Monitor UI│
         └─────────┘ └─────┘ └──────────┘ └───────────┘ └──────────┘
               │                    │           │             │
               │              ┌─────▼────┐      │             │
@@ -57,7 +57,7 @@ The Inception project is a comprehensive system administration exercise that dem
               │                                │             │
         ┌─────▼────────────────────────────────▼─────────────▼───┐
         │              Host Volumes                              │
-        │  /home/login/data/{wordpress,mariadb,static,portainer} │
+        │  /home/login/data/{wordpress,mariadb,static-site}      │
         └────────────────────────────────────────────────────────┘
 ```
 
@@ -117,7 +117,7 @@ Docker Compose orchestrates multi-container applications through declarative YAM
 - [📁 **FTP Server**](docs/ftp.md) - File transfer service for WordPress files
 - [🎨 **Portfolio**](docs/portfolio.md) - Static website showcase
 - [⚙️ **Adminer**](docs/adminer.md) - Web-based database administration
-- [🐳 **Portainer**](docs/portainer.md) - Docker container management interface
+- [🐳 **cAdvisor**](docs/cadvisor.md) - Container resource monitoring agent
 
 ## Configuration Files
 
@@ -462,7 +462,7 @@ COPY --from=builder /app/binary /usr/local/bin/
 - ✅ FTP server with external access (FileZilla compatible)  
 - ✅ Static website (portfolio) at `/portfolio/`
 - ✅ Adminer database interface at `/adminer/`
-- ✅ Portainer Docker management at `/portainer/`
+- ✅ cAdvisor container monitoring at `/cadvisor/`
 
 ### 🧪 **Tests You Need to Perform**
 
@@ -470,10 +470,9 @@ Since I can't test browser access, please verify these:
 
 #### 🌐 **Browser Tests**
 - Visit `https://asadiqui.42.fr` → Should show WordPress site ✅
-- Visit `http://asadiqui.42.fr` → Should redirect to HTTPS ✅  
 - Visit `https://asadiqui.42.fr/portfolio/` → Should show static site ✅
 - Visit `https://asadiqui.42.fr/adminer/` → Should show database interface ✅
-- Visit `https://asadiqui.42.fr/portainer/` → Should show Docker interface ✅
+- Visit `https://asadiqui.42.fr/cadvisor/` → Should show container monitoring ✅
 
 #### 🔐 **WordPress Admin Test**
 - Login with `lmodir` / `1234` → Should access admin dashboard ✅
