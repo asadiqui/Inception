@@ -28,8 +28,8 @@ services:
     build: requirements/nginx
     pull_policy: build
     ports:
-      - "80:80"   #http (redirects to https)
-      - "443:443" #https
+      - "80:80"   # HTTP - not an entry point, just a redirect to https
+      - "443:443" # HTTPS - sole secure entry point
     volumes:
       - wordpress:/var/www/html
       - static-site:/usr/share/nginx/html
