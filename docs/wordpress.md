@@ -198,9 +198,22 @@ if [ ! -e .firstmount ]; then
         wp config set FS_METHOD direct
 ```
 **Explanation**:
-- **Redis Configuration**: Sets up Redis caching integration
-- **WP_CACHE**: Enables WordPress caching
-- **FS_METHOD**: Sets filesystem method to direct (no FTP)
+- **Redis Configuration**: Sets up Redis connection constants in wp-config.php
+  - `WP_REDIS_HOST`: Points to the redis container hostname
+  - `WP_REDIS_PORT`: Redis port (6379)
+- **WP_CACHE**: Enables WordPress object caching
+- **FS_METHOD**: Sets filesystem method to direct (no FTP required)
+
+```bash
+        # Install and activate Redis Object Cache plugin before core install
+        echo "Installing Redis Object Cache plugin..."
+        wp plugin install redis-cache --activate --allow-root
+```
+**Explanation**:
+- Installs the official **Redis Object Cache** plugin by Till Krüss
+- Uses WP-CLI (`wp plugin install`) - the proper automated way per project requirements
+- Plugin is activated immediately after installation
+- Installed **before** WordPress core install so it's available from the start
 
 ```bash
         wp core install --allow-root \
@@ -223,6 +236,16 @@ if [ ! -e .firstmount ]; then
         fi
 ```
 **Explanation**: Creates a second user (non-admin) with 'author' role as required by project specifications.
+
+```bash
+        # Enable Redis object cache
+        wp redis enable --allow-root
+```
+**Explanation**:
+- Enables Redis object caching by creating the `object-cache.php` drop-in file
+- This is done **after** WordPress core installation and plugin activation
+- The drop-in connects WordPress to Redis using the constants set earlier
+- This completes the Redis integration setup
 
 ```bash
     chmod o+w -R /var/www/html/wp-content
@@ -310,8 +333,8 @@ docker exec wordpress wp --info --allow-root
 # List users
 docker exec wordpress wp user list --allow-root
 
-# Install plugin
-docker exec wordpress wp plugin install redis-cache --activate --allow-root
+# List installed plugins
+docker exec wordpress wp plugin list --allow-root
 
 # Update WordPress core
 docker exec wordpress wp core update --allow-root
@@ -319,6 +342,34 @@ docker exec wordpress wp core update --allow-root
 # Database operations
 docker exec wordpress wp db check --allow-root
 docker exec wordpress wp db optimize --allow-root
+```
+
+### Redis Cache Management
+```bash
+# Check Redis connection status
+docker exec -w /var/www/html wordpress wp redis status --allow-root
+
+# Enable Redis object cache
+docker exec -w /var/www/html wordpress wp redis enable --allow-root
+
+# Disable Redis object cache
+docker exec -w /var/www/html wordpress wp redis disable --allow-root
+
+# Flush Redis cache
+docker exec -w /var/www/html wordpress wp cache flush --allow-root
+
+# View Redis cache metrics
+docker exec -w /var/www/html wordpress wp redis metrics --allow-root
+
+# Check Redis from container directly
+docker exec redis redis-cli PING
+# Output: PONG
+
+# Count cached keys
+docker exec redis redis-cli DBSIZE
+
+# View cached keys
+docker exec redis redis-cli --scan | head -20
 ```
 
 ### Content Management
@@ -366,15 +417,20 @@ docker exec wordpress wp theme activate twentytwentyfour --allow-root
 
 ### Cache Management
 ```bash
-# Flush Redis cache
-docker exec wordpress wp cache flush --allow-root
+# Flush WordPress cache (Redis-backed)
+docker exec -w /var/www/html wordpress wp cache flush --allow-root
 
-# Check Redis connection
-docker exec wordpress wp redis status --allow-root
+# Check Redis connection and status
+docker exec -w /var/www/html wordpress wp redis status --allow-root
+# Shows: Status, Client, Redis Version, Ping test, Metrics
 
-# Enable/disable cache
-docker exec wordpress wp redis enable --allow-root
-docker exec wordpress wp redis disable --allow-root
+# Enable/disable Redis object cache
+docker exec -w /var/www/html wordpress wp redis enable --allow-root
+docker exec -w /var/www/html wordpress wp redis disable --allow-root
+
+# Direct Redis inspection
+docker exec redis redis-cli INFO stats
+docker exec redis redis-cli DBSIZE
 ```
 
 ### Database Operations
@@ -423,6 +479,53 @@ docker exec wordpress tail -f /var/www/html/wp-content/debug.log
 
 # Check error logs
 docker exec wordpress tail -f /var/log/php82/error.log
+```
+
+### Redis Integration Verification
+```bash
+# Check Redis plugin status (shows connection, client, version, ping, metrics)
+docker exec -w /var/www/html wordpress wp redis status --allow-root
+
+# Verify Redis drop-in is present
+docker exec wordpress ls -la /var/www/html/wp-content/object-cache.php
+
+# Check cached keys count
+docker exec redis redis-cli DBSIZE
+
+# List sample cached keys
+docker exec redis redis-cli --scan | head -10
+
+# Monitor Redis operations in real-time
+docker exec redis redis-cli MONITOR
+
+# Get Redis statistics
+docker exec redis redis-cli INFO stats
+
+# Check specific WordPress cache key
+docker exec redis redis-cli GET wp:options:alloptions
+
+# View Redis memory usage
+docker exec redis redis-cli INFO memory | grep used_memory_human
+```
+
+**Expected Results**:
+- `wp redis status` should show: Status: Connected, Client: Predis, Redis Version: 7.0.x, Ping: PONG
+- `object-cache.php` should exist (the Redis drop-in file)
+- `DBSIZE` should return number of cached keys (increases after browsing site)
+- Keys should follow pattern: `wp:options:*`, `wp:translation_files:*`, `wp:redis-cache:*`
+
+**Troubleshooting Redis**:
+```bash
+# If Redis not working, reinstall plugin
+docker exec -w /var/www/html wordpress wp plugin deactivate redis-cache --allow-root
+docker exec -w /var/www/html wordpress wp plugin activate redis-cache --allow-root
+docker exec -w /var/www/html wordpress wp redis enable --allow-root
+
+# Check Redis connection from WordPress
+docker exec wordpress nc -zv redis 6379
+
+# Verify Redis config in wp-config.php
+docker exec wordpress grep WP_REDIS /var/www/html/wp-config.php
 ```
 
 ## Related Documentation

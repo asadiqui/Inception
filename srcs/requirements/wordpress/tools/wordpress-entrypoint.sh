@@ -29,6 +29,11 @@ if [ ! -e .firstmount ]; then
         wp config set WP_REDIS_PORT 6379 --raw
         wp config set WP_CACHE true --raw
         wp config set FS_METHOD direct
+        
+        # Install and activate Redis Object Cache plugin before core install
+        echo "Installing Redis Object Cache plugin..."
+        wp plugin install redis-cache --activate --allow-root
+        
         wp core install --allow-root \
             --skip-email \
             --url="$DOMAIN_NAME" \
@@ -41,6 +46,9 @@ if [ ! -e .firstmount ]; then
         if ! wp user get "$WORDPRESS_USER" --allow-root > /dev/null 2>&1; then
             wp user create "$WORDPRESS_USER" "$WORDPRESS_EMAIL" --role=author --user_pass="$WORDPRESS_PASSWORD" --allow-root
         fi
+
+        # Enable Redis object cache
+        wp redis enable --allow-root
     else
         echo "WordPress is already installed."
     fi
