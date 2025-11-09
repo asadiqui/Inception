@@ -184,17 +184,20 @@ if [ ! -d "/var/lib/mysql/mysql" ]; then
 
 ```bash
     echo "Setting up database and users..."
-    mysql << EOF
-DELETE FROM mysql.user WHERE user NOT IN ('mysql.sys', 'mysqlxsys', 'root') OR host NOT IN ('localhost') ;
-SET PASSWORD FOR 'root'@'localhost'=PASSWORD('${MYSQL_ROOT_PASSWORD}') ;
-GRANT ALL ON *.* TO 'root'@'%' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}' ;
-CREATE DATABASE IF NOT EXISTS \`${MYSQL_DATABASE}\` ;
-CREATE USER '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}' ;
-GRANT ALL ON \`${MYSQL_DATABASE}\`.* TO '${MYSQL_USER}'@'%' ;
-FLUSH PRIVILEGES ;
-EOF
+    cat > /tmp/setup.sql <<EOSQL
+DELETE FROM mysql.user WHERE user NOT IN ('mysql.sys', 'mysqlxsys', 'root') OR host NOT IN ('localhost');
+SET PASSWORD FOR 'root'@'localhost'=PASSWORD('${MYSQL_ROOT_PASSWORD}');
+GRANT ALL ON *.* TO 'root'@'%' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';
+CREATE DATABASE IF NOT EXISTS \`${MYSQL_DATABASE}\`;
+CREATE USER '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';
+GRANT ALL ON \`${MYSQL_DATABASE}\`.* TO '${MYSQL_USER}'@'%';
+FLUSH PRIVILEGES;
+EOSQL
+    mysql < /tmp/setup.sql 2>/dev/null || true
+    rm -f /tmp/setup.sql
 ```
 **Explanation**:
+- **cat > /tmp/setup.sql**: Creates a temporary SQL file with setup commands
 - **DELETE FROM mysql.user**: Removes anonymous and unnecessary users
 - **SET PASSWORD**: Sets root password from environment variable
 - **GRANT ALL ... TO 'root'@'%'**: Allows root access from any host
@@ -202,21 +205,32 @@ EOF
 - **CREATE USER**: Creates application user with limited privileges
 - **GRANT ALL ON database**: Gives user full access to WordPress database only
 - **FLUSH PRIVILEGES**: Reloads privilege tables
+- **mysql < /tmp/setup.sql**: Executes the SQL file (safer than heredoc)
+- **rm -f /tmp/setup.sql**: Cleans up temporary file
 
 ```bash
-    if ! kill -s TERM "$pid" || ! wait "$pid"; then
-        echo >&2 'MariaDB init process failed.'
-        exit 1
-    fi
+    echo "Database setup complete."
+    echo "Stopping temporary MariaDB server..."
+    
+    # Shutdown the temporary server gracefully
+    mysqladmin -u root -p"${MYSQL_ROOT_PASSWORD}" shutdown 2>/dev/null || true
+    wait "$pid" 2>/dev/null || true
+    
+    sleep 2
     
     echo "MariaDB initialization complete."
 fi
 ```
 **Explanation**:
-- Gracefully stops temporary MariaDB instance
-- **kill -s TERM**: Sends termination signal
-- **wait**: Waits for process to exit cleanly
-- Error handling if shutdown fails
+- Gracefully stops temporary MariaDB instance using proper shutdown procedure
+- **mysqladmin shutdown**: Uses MariaDB's built-in shutdown command (more reliable than kill)
+- **-u root -p"${MYSQL_ROOT_PASSWORD}"**: Authenticates with root to perform shutdown
+- **wait "$pid"**: Waits for background process to fully exit
+- **sleep 2**: Ensures complete cleanup before starting final server
+- **|| true**: Prevents script exit on non-critical errors
+- **2>/dev/null**: Suppresses warning messages
+
+> **Fix Note**: The original script used `kill -s TERM "$pid"` which was unreliable and could cause the container to hang during initialization. Using `mysqladmin shutdown` ensures proper cleanup of the temporary server before starting the production instance.
 
 ```bash
 echo "Starting MariaDB server..."

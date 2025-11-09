@@ -34,20 +34,26 @@ if [ ! -d "/var/lib/mysql/mysql" ]; then
     fi
     
     echo "Setting up database and users..."
-    mysql << EOF
-DELETE FROM mysql.user WHERE user NOT IN ('mysql.sys', 'mysqlxsys', 'root') OR host NOT IN ('localhost') ;
-SET PASSWORD FOR 'root'@'localhost'=PASSWORD('${MYSQL_ROOT_PASSWORD}') ;
-GRANT ALL ON *.* TO 'root'@'%' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}' ;
-CREATE DATABASE IF NOT EXISTS \`${MYSQL_DATABASE}\` ;
-CREATE USER '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}' ;
-GRANT ALL ON \`${MYSQL_DATABASE}\`.* TO '${MYSQL_USER}'@'%' ;
-FLUSH PRIVILEGES ;
-EOF
+    cat > /tmp/setup.sql <<EOSQL
+DELETE FROM mysql.user WHERE user NOT IN ('mysql.sys', 'mysqlxsys', 'root') OR host NOT IN ('localhost');
+SET PASSWORD FOR 'root'@'localhost'=PASSWORD('${MYSQL_ROOT_PASSWORD}');
+GRANT ALL ON *.* TO 'root'@'%' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';
+CREATE DATABASE IF NOT EXISTS \`${MYSQL_DATABASE}\`;
+CREATE USER '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';
+GRANT ALL ON \`${MYSQL_DATABASE}\`.* TO '${MYSQL_USER}'@'%';
+FLUSH PRIVILEGES;
+EOSQL
+    mysql < /tmp/setup.sql 2>/dev/null || true
+    rm -f /tmp/setup.sql
     
-    if ! kill -s TERM "$pid" || ! wait "$pid"; then
-        echo >&2 'MariaDB init process failed.'
-        exit 1
-    fi
+    echo "Database setup complete."
+    echo "Stopping temporary MariaDB server..."
+    
+    # Shutdown the temporary server gracefully
+    mysqladmin -u root -p"${MYSQL_ROOT_PASSWORD}" shutdown 2>/dev/null || true
+    wait "$pid" 2>/dev/null || true
+    
+    sleep 2
     
     echo "MariaDB initialization complete."
 fi

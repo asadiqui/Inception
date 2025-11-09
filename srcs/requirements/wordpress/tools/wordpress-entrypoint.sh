@@ -30,10 +30,6 @@ if [ ! -e .firstmount ]; then
         wp config set WP_CACHE true --raw
         wp config set FS_METHOD direct
         
-        # Install and activate Redis Object Cache plugin before core install
-        echo "Installing Redis Object Cache plugin..."
-        wp plugin install redis-cache --activate --allow-root
-        
         wp core install --allow-root \
             --skip-email \
             --url="$DOMAIN_NAME" \
@@ -47,6 +43,10 @@ if [ ! -e .firstmount ]; then
             wp user create "$WORDPRESS_USER" "$WORDPRESS_EMAIL" --role=author --user_pass="$WORDPRESS_PASSWORD" --allow-root
         fi
 
+        # Install and activate Redis Object Cache plugin after core install
+        echo "Installing Redis Object Cache plugin..."
+        wp plugin install redis-cache --activate --allow-root
+        
         # Enable Redis object cache
         wp redis enable --allow-root
     else
